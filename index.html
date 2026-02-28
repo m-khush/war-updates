@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Conflict Briefing - Content Creator Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chosen Palette: Light Warm Neutrals (Slate-50 to Slate-200) with High-Contrast Action Colors (Rose-600 for alerts, Indigo-600 for data, Emerald-600 for stability) to provide a clear, broadcast-ready aesthetic suitable for video recording. -->
+    
+    <!-- Application Structure Plan: The SPA is designed as a "Command Center / Creator Studio" hybrid. It features a top breaking-news ticker, followed by top-level KPI cards for immediate video hooks. The middle section contains responsive Chart.js data visualizations for B-roll or screenshot integration. The bottom section pairs a live incident timeline with an interactive "News Script Generator," allowing the user to click any event and instantly receive formatted text for tweets, TikTok/Reels scripts, and broadcast read-outs. This structure prioritizes rapid content synthesis. -->
+    
+    <!-- Visualization & Content Choices: 
+    1. KPIs: HTML/Tailwind -> Goal: Immediate numbers for video hooks -> Justification: Text is easiest to read on camera.
+    2. Territorial Control Chart: Chart.js Stacked Bar -> Goal: Show shifts over time -> Justification: Clear temporal comparison without SVG. 
+    3. Resource Impact Chart: Chart.js Line -> Goal: Show economic fallout -> Justification: Standard method for trend analysis.
+    4. Timeline & Script Generator: HTML/JS -> Goal: Convert raw data into publishable content -> Justification: Directly answers the user's request to "make posts and videos". 
+    -->
+    
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            background-color: #1e293b;
+            color: #f8fafc;
+            white-space: nowrap;
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .ticker {
+            display: inline-block;
+            animation: ticker 25s linear infinite;
+            padding-left: 100%;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+        
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        .pulse-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #e11d48;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(225, 29, 72, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <div class="ticker-wrap border-b-4 border-rose-600 shadow-md z-50 relative">
+        <div class="absolute left-0 top-0 bottom-0 bg-rose-600 px-4 py-2 flex items-center justify-center font-bold text-white z-10 shadow-[2px_0_10px_rgba(0,0,0,0.5)]">
+            <span class="pulse-dot bg-white"></span> LIVE ALERTS
+        </div>
+        <div class="ticker pl-40" id="breaking-ticker">
+            Loading breaking news...
+        </div>
+    </div>
+
+    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">📡</span>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">OSINT Content Creator Studio</h1>
+                    <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Tactical Briefing & Media Generation</p>
+                </div>
+            </div>
+            <div class="text-right hidden sm:block">
+                <p class="text-sm font-bold text-slate-700" id="current-time">00:00:00 UTC</p>
+                <p class="text-xs text-emerald-600 font-semibold bg-emerald-100 px-2 py-1 rounded mt-1 inline-block">● Connection Secure</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <section class="mb-10">
+            <h2 class="text-xl font-bold text-slate-800 mb-2 border-l-4 border-indigo-600 pl-3">Headline Metrics</h2>
+            <p class="text-slate-600 mb-6 text-sm max-w-3xl">
+                Use these verified data points as powerful "hooks" for the beginning of your videos or as large text overlays in your posts. High-impact numbers immediately capture audience attention.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-3 opacity-20 text-4xl">⏱️</div>
+                    <h3 class="text-slate-500 text-sm font-bold uppercase tracking-wide mb-1">Conflict Duration</h3>
+                    <p class="text-4xl font-extrabold text-slate-900" id="kpi-days">0</p>
+                    <p class="text-xs text-slate-500 mt-2 font-medium">Days since primary escalation</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-3 opacity-20 text-4xl">🗺️</div>
+                    <h3 class="text-slate-500 text-sm font-bold uppercase tracking-wide mb-1">Territory Shift</h3>
+                    <p class="text-4xl font-extrabold text-rose-600" id="kpi-shift">0%</p>
+                    <p class="text-xs text-slate-500 mt-2 font-medium">Contested zones reassigned (72h)</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-3 opacity-20 text-4xl">👥</div>
+                    <h3 class="text-slate-500 text-sm font-bold uppercase tracking-wide mb-1">Displaced Est.</h3>
+                    <p class="text-4xl font-extrabold text-indigo-600" id="kpi-displaced">0</p>
+                    <p class="text-xs text-slate-500 mt-2 font-medium">Reported by humanitarian NGOs</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-3 opacity-20 text-4xl">⚠️</div>
+                    <h3 class="text-slate-500 text-sm font-bold uppercase tracking-wide mb-1">Active Hotspots</h3>
+                    <p class="text-4xl font-extrabold text-amber-500" id="kpi-hotspots">0</p>
+                    <p class="text-xs text-slate-500 mt-2 font-medium">High intensity zones identified</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-xl font-bold text-slate-800 mb-2 border-l-4 border-indigo-600 pl-3">Strategic Visualizations</h2>
+            <p class="text-slate-600 mb-6 text-sm max-w-3xl">
+                Screenshot or screen-record these interactive charts to provide deep-dive analysis in your content. Hover over data points to display specific numbers for your commentary.
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800 text-lg">Territorial Control Dynamics</h3>
+                        <span class="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded">30-Day Trend</span>
+                    </div>
+                    <div class="chart-container flex-grow">
+                        <canvas id="territoryChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-4 text-center">Percentage of contested sectors under faction control.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800 text-lg">Global Resource Impact Index</h3>
+                        <span class="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-600 rounded">Global Markets</span>
+                    </div>
+                    <div class="chart-container flex-grow">
+                        <canvas id="resourceChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-4 text-center">Fluctuations in energy and supply chain stability indices.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-bold text-slate-800 mb-2 border-l-4 border-indigo-600 pl-3">News Post & Script Generator</h2>
+            <p class="text-slate-600 mb-6 text-sm max-w-3xl">
+                Select an event from the live intelligence timeline on the left. The generator on the right will automatically format this raw data into read-to-use scripts for short-form video (TikTok/Reels), long-form broadcast, and social media text posts.
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                
+                <div class="lg:col-span-1 border-r border-slate-200 bg-slate-50 flex flex-col h-[600px]">
+                    <div class="p-4 border-b border-slate-200 bg-white flex justify-between items-center sticky top-0">
+                        <h3 class="font-bold text-slate-800"><span class="pulse-dot inline-block"></span>Live Intelligence Feed</h3>
+                        <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">Click to Select</span>
+                    </div>
+                    <div class="p-4 overflow-y-auto custom-scrollbar flex-grow" id="timeline-container">
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 p-6 flex flex-col h-[600px] overflow-y-auto custom-scrollbar bg-white">
+                    <div id="empty-state" class="flex-grow flex flex-col items-center justify-center text-center px-8">
+                        <div class="text-6xl mb-4 opacity-50">✍️</div>
+                        <h3 class="text-xl font-bold text-slate-700 mb-2">Select an event to generate content</h3>
+                        <p class="text-slate-500">Click any incident from the live feed timeline to instantly create tailored scripts, tweets, and broadcast read-outs.</p>
+                    </div>
+
+                    <div id="content-state" class="hidden flex-col gap-6">
+                        <div class="border-b border-slate-200 pb-4">
+                            <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full mb-3 uppercase tracking-wider" id="gen-category">Category</span>
+                            <h3 class="text-2xl font-extrabold text-slate-900 mb-2" id="gen-title">Event Title</h3>
+                            <p class="text-slate-600 text-sm font-mono bg-slate-100 p-2 rounded" id="gen-raw">Raw Data Source</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <h4 class="font-bold text-slate-800 flex items-center gap-2"><span class="text-xl">📱</span> Short-Form Video Script (TikTok/Reels/Shorts)</h4>
+                                <button onclick="copyText('script-short')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded hover:bg-slate-700 transition-colors">Copy</button>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 font-sans text-slate-800 relative whitespace-pre-wrap" id="script-short"></div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <h4 class="font-bold text-slate-800 flex items-center gap-2"><span class="text-xl">🐦</span> Text Post / Update Thread</h4>
+                                <button onclick="copyText('script-text')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded hover:bg-slate-700 transition-colors">Copy</button>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 font-sans text-slate-800 relative whitespace-pre-wrap" id="script-text"></div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <h4 class="font-bold text-slate-800 flex items-center gap-2"><span class="text-xl">🎙️</span> Formal Broadcast Read-Out</h4>
+                                <button onclick="copyText('script-formal')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded hover:bg-slate-700 transition-colors">Copy</button>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 font-serif text-slate-800 leading-relaxed text-lg relative whitespace-pre-wrap" id="script-formal"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm border-t border-slate-800 mt-auto">
+        <p>OSINT Briefing System v2.4 | Data simulated for demonstration purposes.</p>
+        <p class="mt-1 text-xs opacity-50">Ensure all generated content is verified before publication.</p>
+    </footer>
+
+    <script>
+        const appData = {
+            kpis: {
+                daysActive: 142,
+                territoryShift: "+4.2",
+                displaced: "1.2M",
+                hotspots: 7
+            },
+            timeline: [
+                {
+                    id: 1,
+                    time: "10 mins ago",
+                    category: "Strategic Shift",
+                    title: "Northern Sector Defensive Line Breached",
+                    raw: "Satellite imagery confirms collapse of primary defensive structures in Sector 4 North. Heavy armor movement detected heading southbound.",
+                    impact: "High",
+                    tags: ["#Breaking", "#MilitaryUpdate"]
+                },
+                {
+                    id: 2,
+                    time: "1 hr ago",
+                    category: "Economic Impact",
+                    title: "Major Supply Route Blockaded",
+                    raw: "Highway Alpha-7 completely shut down by debris and checkpoints. Estimated 400 transport vehicles stalled.",
+                    impact: "Medium",
+                    tags: ["#SupplyChain", "#Economy"]
+                },
+                {
+                    id: 3,
+                    time: "3 hrs ago",
+                    category: "Humanitarian",
+                    title: "Emergency Evacuation Ordered for City Delta",
+                    raw: "Local authorities mandate immediate civilian evacuation of City Delta perimeter citing imminent artillery risk. Shelters at 140% capacity.",
+                    impact: "Critical",
+                    tags: ["#CivilianSafety", "#Evacuation"]
+                },
+                {
+                    id: 4,
+                    time: "5 hrs ago",
+                    category: "Diplomatic",
+                    title: "Peace Talks Stalled in Neutral Zone",
+                    raw: "Delegates exit summit early. Disagreement over demilitarized zone boundaries cited as primary failure point. No future date set.",
+                    impact: "High",
+                    tags: ["#Diplomacy", "#Update"]
+                },
+                {
+                    id: 5,
+                    time: "12 hrs ago",
+                    category: "Infrastructure",
+                    title: "Power Grid Failure in Eastern Province",
+                    raw: "Substation 9 compromised. Over 400,000 residents without power. Restoration estimates currently unavailable due to active conflict in area.",
+                    impact: "Medium",
+                    tags: ["#Infrastructure", "#Blackout"]
+                },
+                 {
+                    id: 6,
+                    time: "18 hrs ago",
+                    category: "Strategic Shift",
+                    title: "Aerial Superiority Contested over Central Ridge",
+                    raw: "Multiple anti-air engagements recorded. Neither faction currently establishing dominance. Civilian flights diverted permanently.",
+                    impact: "High",
+                    tags: ["#Aviation", "#Tactical"]
+                }
+            ],
+            charts: {
+                labels: ["Day -30", "Day -24", "Day -18", "Day -12", "Day -6", "Today"],
+                factionA: [45, 46, 44, 48, 51, 53],
+                factionB: [40, 39, 41, 38, 35, 33],
+                neutral: [15, 15, 15, 14, 14, 14],
+                energyPrices: [100, 105, 112, 110, 125, 138],
+                supplyIndex: [100, 95, 88, 85, 75, 68]
+            }
+        };
+
+        function initClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('current-time').textContent = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+            }, 1000);
+        }
+
+        function populateKPIs() {
+            document.getElementById('kpi-days').textContent = appData.kpis.daysActive;
+            document.getElementById('kpi-shift').textContent = appData.kpis.territoryShift + '%';
+            document.getElementById('kpi-displaced').textContent = appData.kpis.displaced;
+            document.getElementById('kpi-hotspots').textContent = appData.kpis.hotspots;
+        }
+
+        function initTicker() {
+            const headlines = appData.timeline.map(item => `[${item.category.toUpperCase()}] ${item.title}`).join('  |  ');
+            document.getElementById('breaking-ticker').textContent = headlines + '  |  ' + headlines;
+        }
+
+        function renderCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+                    tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleFont: { size: 13 }, bodyFont: { size: 13 }, padding: 10 }
+                }
+            };
+
+            const ctxTerritory = document.getElementById('territoryChart').getContext('2d');
+            new Chart(ctxTerritory, {
+                type: 'bar',
+                data: {
+                    labels: appData.charts.labels,
+                    datasets: [
+                        { label: 'Coalition Forces', data: appData.charts.factionA, backgroundColor: '#4f46e5', stack: 'Stack 0' },
+                        { label: 'Opposition', data: appData.charts.factionB, backgroundColor: '#e11d48', stack: 'Stack 0' },
+                        { label: 'Contested/Neutral', data: appData.charts.neutral, backgroundColor: '#94a3b8', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, max: 100, ticks: { callback: function(value) { return value + '%'; } } }
+                    }
+                }
+            });
+
+            const ctxResource = document.getElementById('resourceChart').getContext('2d');
+            new Chart(ctxResource, {
+                type: 'line',
+                data: {
+                    labels: appData.charts.labels,
+                    datasets: [
+                        { label: 'Global Energy Price Index', data: appData.charts.energyPrices, borderColor: '#ea580c', backgroundColor: 'rgba(234, 88, 12, 0.1)', borderWidth: 3, fill: true, tension: 0.4, yAxisID: 'y' },
+                        { label: 'Supply Chain Stability', data: appData.charts.supplyIndex, borderColor: '#0ea5e9', borderDash: [5, 5], borderWidth: 3, tension: 0.4, yAxisID: 'y1' }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Energy Index' } },
+                        y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Stability Index' } }
+                    }
+                }
+            });
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+
+            appData.timeline.forEach(event => {
+                const impactColor = event.impact === 'Critical' ? 'bg-rose-100 text-rose-700 border-rose-200' : 
+                                  (event.impact === 'High' ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-amber-100 text-amber-700 border-amber-200');
+                
+                const dotColor = event.impact === 'Critical' ? 'bg-rose-500' : 
+                               (event.impact === 'High' ? 'bg-orange-500' : 'bg-amber-500');
+
+                const item = document.createElement('div');
+                item.className = 'relative pl-6 pb-6 border-l-2 border-slate-200 cursor-pointer group hover:bg-slate-100 p-3 rounded-r transition-colors';
+                item.onclick = () => selectEvent(event.id);
+                
+                item.innerHTML = `
+                    <div class="absolute w-3 h-3 ${dotColor} rounded-full -left-[7px] top-4 border-2 border-white shadow-sm group-hover:scale-125 transition-transform"></div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">${event.time}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${impactColor}">${event.impact}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-1 group-hover:text-indigo-600 transition-colors">${event.title}</h4>
+                    <p class="text-xs text-slate-600 line-clamp-2">${event.raw}</p>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function selectEvent(id) {
+            const event = appData.timeline.find(e => e.id === id);
+            if (!event) return;
+
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('content-state').classList.remove('hidden');
+            document.getElementById('content-state').classList.add('flex');
+
+            document.getElementById('gen-category').textContent = event.category;
+            document.getElementById('gen-title').textContent = event.title;
+            document.getElementById('gen-raw').textContent = `[SOURCE] ${event.raw}`;
+
+            const hookPrefixes = ["🚨 MAJOR UPDATE:", "⚠️ BREAKING TACTICAL SHIFT:", "🛑 JUST IN:"];
+            const randomHook = hookPrefixes[Math.floor(Math.random() * hookPrefixes.length)];
+
+            const shortScript = `[HOOK - Point to text above]
+${randomHook} ${event.title}!
+
+[BODY - Fast pace]
+Reports coming in right now indicate that ${event.raw.charAt(0).toLowerCase() + event.raw.slice(1)}
+
+[CONTEXT - Show background image]
+This is a ${event.impact.toUpperCase()} impact situation regarding the ${event.category} aspect of the conflict.
+
+[CALL TO ACTION]
+Things are moving fast. Hit follow to stay updated as we verify more data. What do you think this means for the region? Let me know below.`;
+
+            const textPost = `🚨 BREAKING: ${event.title}
+
+Confirmed reports: ${event.raw}
+
+Impact Level: ${event.impact.toUpperCase()}
+
+We are monitoring the situation closely. Next 24 hours are critical for the ${event.category.toLowerCase()} sector. 
+
+${event.tags.join(' ')} #OSINT`;
+
+            const formalScript = `Good evening. We begin our coverage with breaking news regarding the ongoing conflict. 
+
+Our intelligence desk has just confirmed a significant development: ${event.title}. 
+
+According to raw field data, ${event.raw.charAt(0).toLowerCase() + event.raw.slice(1)}
+
+Analysts classify the impact of this event as ${event.impact.toLowerCase()}, specifically concerning the ${event.category.toLowerCase()} framework of the region. We will continue to track this situation and bring you live updates as military and diplomatic channels respond to this developing story.`;
+
+            document.getElementById('script-short').textContent = shortScript;
+            document.getElementById('script-text').textContent = textPost;
+            document.getElementById('script-formal').textContent = formalScript;
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector(`button[onclick="copyText('${elementId}')"]`);
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied! ✓';
+                btn.classList.replace('bg-slate-800', 'bg-emerald-600');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.classList.replace('bg-emerald-600', 'bg-slate-800');
+                }, 2000);
+            });
+        }
+
+        window.onload = () => {
+            initClock();
+            populateKPIs();
+            initTicker();
+            renderCharts();
+            renderTimeline();
+        };
+    </script>
+</body>
+</html>
